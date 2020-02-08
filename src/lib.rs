@@ -16,23 +16,37 @@ pub unsafe trait SharedWrite {
 
 // TODO: Impl SharedWrite for things in std.
 
-// TODO: Once specialization is stabilized, blanket-impl SharedWrite for
-// Mutex<W: Write>, if that actually makes sense.
+// TODO: Blanket-impl SharedWrite for Mutex<W: Write>, if that actually makes
+// sense.
 
+#[derive(Debug)]
 pub struct LogRoot<W: SharedWrite> {
     writer: W,
 }
 
 impl<W: SharedWrite> LogRoot<W> {
     fn node<'a>(&'a mut self) -> LogNode<'a, W> {
-        unimplemented!();
+        LogNode {
+            parent: PhantomData,
+            path: LogPath::Here("".into()),
+            root: self,
+            indent: 0,
+        }
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum NamedLogNodeError {
+    DifferentPrefix(String),
+}
+
+// TODO: Show that `root` being a raw pointer is sound. Or maybe find a safe
+// alternative.
+#[derive(Debug)]
 pub struct LogNode<'n, W: SharedWrite> {
     parent: PhantomData<&'n mut ()>,
     path: LogPath<'n>,
-    root: *const LogRoot<W>, // TODO: show that this is sound
+    root: *const LogRoot<W>,
     indent: usize,
 }
 
@@ -42,19 +56,42 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
     }
 
     pub fn child<'a>(&'a mut self, entry: &str) -> LogNode<'a, W> {
-        unimplemented!();
+        self.put(entry);
+        LogNode {
+            parent: PhantomData,
+            path: match self.path {
+                LogPath::Here(ref s) => LogPath::NotHere(s),
+                LogPath::NotHere(s) => LogPath::NotHere(s),
+            },
+            root: self.root,
+            indent: self.indent + 1,
+        }
     }
 
-    // TODO: Should `name` be &str, String, or LogPath?
-    pub fn named_child(&self, name: &str, entry: &str) -> LogNode<'n, W> {
-        unimplemented!();
+    pub fn named_child(&self, name: String, entry: &str)
+    -> Result<LogNode<'n, W>, NamedLogNodeError> {
+        // TODO: This is a common pattern. Just impl Deref on LogPath or
+        // something.
+        let p = match self.path {
+            LogPath::Here(ref s) => s,
+            LogPath::NotHere(s) => s,
+        };
+        if !(name.starts_with(p) && name[p.len()..].starts_with("/")) {
+            return Err(NamedLogNodeError::DifferentPrefix(name));
+        }
+        Ok(LogNode {
+            parent: PhantomData,
+            path: LogPath::Here(name),
+            root: self.root,
+            indent: self.indent + 1,
+        })
     }
 }
 
-// Depending on 'alloc' feature, this contains either String or &'static str.
-// (I think.)
-//pub struct LogPath(String);
+#[derive(Debug)]
 pub enum LogPath<'p> {
+    // TODO: Depending on 'alloc' feature, this contains either String or
+    // &'static str. (I think.)
     Here(String),
     NotHere(&'p str),
 }

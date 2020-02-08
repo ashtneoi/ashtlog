@@ -2,6 +2,7 @@
 
 extern crate alloc;
 
+use alloc::sync::Arc;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt; // :(
@@ -19,44 +20,41 @@ pub unsafe trait SharedWrite {
 // Mutex<W: Write>, if that actually makes sense.
 
 pub struct LogRoot<W: SharedWrite> {
-    path: LogPath,
     writer: W,
 }
 
 impl<W: SharedWrite> LogRoot<W> {
-    fn node<'a>(&'a mut self) -> LogNode<'a, 'a, W> {
-        LogNode {
-            parent: PhantomData,
-            path: &self.path,
-            root: self as *const Self,
-            indent: 0,
-        }
+    fn node<'a>(&'a mut self) -> LogNode<'a, W> {
+        unimplemented!();
     }
 }
 
-pub struct LogNode<'n, 'p, W: SharedWrite> {
+pub struct LogNode<'n, W: SharedWrite> {
     parent: PhantomData<&'n mut ()>,
-    path: &'p LogPath,
+    path: LogPath<'n>,
     root: *const LogRoot<W>, // TODO: show that this is sound
     indent: usize,
 }
 
-impl<'n, 'p, W: SharedWrite> LogNode<'n, 'p, W> {
+impl<'n, W: SharedWrite> LogNode<'n, W> {
     pub fn put(&mut self, entry: &str) {
-        unsafe {
-            let root = &*self.root;
-            root.writer.write_str(entry).unwrap(); // XXX
-        }
+        unimplemented!();
     }
 
-    pub fn child<'a>(&'a mut self, entry: &str) -> LogNode<'a, 'p, W> {
-        LogNode {
-            parent: PhantomData,
-            path: &*self.path,
-            root: self.root,
-            indent: self.indent + 1,
-        }
+    pub fn child<'a>(&'a mut self, entry: &str) -> LogNode<'a, W> {
+        unimplemented!();
+    }
+
+    // TODO: Should `name` be &str, String, or LogPath?
+    pub fn named_child(&self, name: &str, entry: &str) -> LogNode<'n, W> {
+        unimplemented!();
     }
 }
 
-pub struct LogPath(Vec<String>);
+// Depending on 'alloc' feature, this contains either String or &'static str.
+// (I think.)
+//pub struct LogPath(String);
+pub enum LogPath<'p> {
+    Here(String),
+    NotHere(&'p str),
+}

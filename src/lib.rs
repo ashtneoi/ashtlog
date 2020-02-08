@@ -7,23 +7,23 @@ use alloc::vec::Vec;
 use core::fmt; // :(
 use core::marker::PhantomData;
 
-pub unsafe trait SyncWrite {
+pub unsafe trait SharedWrite {
     fn write_str(&self, s: &str) -> Result<(), fmt::Error>;
 
     // TODO: Do we want the rest of the fmt::Write methods?
 }
 
-// TODO: Impl SyncWrite for things in std.
+// TODO: Impl SharedWrite for things in std.
 
-// TODO: Once specialization is stabilized, blanket-impl SyncWrite for
+// TODO: Once specialization is stabilized, blanket-impl SharedWrite for
 // Mutex<W: Write>, if that actually makes sense.
 
-pub struct LogRoot<W: SyncWrite> {
+pub struct LogRoot<W: SharedWrite> {
     path: LogPath,
     writer: W,
 }
 
-impl<W: SyncWrite> LogRoot<W> {
+impl<W: SharedWrite> LogRoot<W> {
     fn node<'a>(&'a mut self) -> LogNode<'a, 'a, W> {
         LogNode {
             parent: PhantomData,
@@ -34,14 +34,14 @@ impl<W: SyncWrite> LogRoot<W> {
     }
 }
 
-pub struct LogNode<'n, 'p, W: SyncWrite> {
+pub struct LogNode<'n, 'p, W: SharedWrite> {
     parent: PhantomData<&'n mut ()>,
     path: &'p LogPath,
     root: *const LogRoot<W>, // TODO: show that this is sound
     indent: usize,
 }
 
-impl<'n, 'p, W: SyncWrite> LogNode<'n, 'p, W> {
+impl<'n, 'p, W: SharedWrite> LogNode<'n, 'p, W> {
     pub fn put(&mut self, entry: &str) {
         unsafe {
             let root = &*self.root;

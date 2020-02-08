@@ -7,6 +7,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt; // :(
 use core::marker::PhantomData;
+use core::ops::Deref;
 
 pub unsafe trait SharedWrite {
     fn write_str(&self, s: &str) -> Result<(), fmt::Error>;
@@ -59,10 +60,7 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
         self.put(entry);
         LogNode {
             parent: PhantomData,
-            path: match self.path {
-                LogPath::Here(ref s) => LogPath::NotHere(s),
-                LogPath::NotHere(s) => LogPath::NotHere(s),
-            },
+            path: LogPath::NotHere(&*self.path),
             root: self.root,
             indent: self.indent + 1,
         }
@@ -70,13 +68,10 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
 
     pub fn named_child(&self, name: String, entry: &str)
     -> Result<LogNode<'n, W>, NamedLogNodeError> {
-        // TODO: This is a common pattern. Just impl Deref on LogPath or
-        // something.
-        let p = match self.path {
-            LogPath::Here(ref s) => s,
-            LogPath::NotHere(s) => s,
-        };
-        if !(name.starts_with(p) && name[p.len()..].starts_with("/")) {
+        if !(
+            name.starts_with(&*self.path)
+            && name[self.path.len()..].starts_with("/")
+        ) {
             return Err(NamedLogNodeError::DifferentPrefix(name));
         }
         Ok(LogNode {
@@ -94,4 +89,15 @@ pub enum LogPath<'p> {
     // &'static str. (I think.)
     Here(String),
     NotHere(&'p str),
+}
+
+impl<'p> Deref for LogPath<'p> {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Here(ref s) => s,
+            Self::NotHere(s) => s,
+        }
+    }
 }

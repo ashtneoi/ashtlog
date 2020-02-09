@@ -3,14 +3,14 @@
 extern crate alloc;
 
 use alloc::string::String;
-use core::fmt; // :(
+use core::fmt;
 use core::marker::PhantomData;
 use core::ops::Deref;
 
 pub unsafe trait SharedWrite {
-    fn write_str(&self, s: &str) -> Result<(), fmt::Error>;
-
-    // TODO: Do we want the rest of the fmt::Write methods?
+    fn write_str(&self, s: &str) -> fmt::Result;
+    fn write_char(&self, c: char) -> fmt::Result;
+    fn write_fmt(&self, args: fmt::Arguments) -> fmt::Result;
 }
 
 // TODO: Impl SharedWrite for things in std.
@@ -24,7 +24,11 @@ pub struct LogRoot<W: SharedWrite> {
 }
 
 impl<W: SharedWrite> LogRoot<W> {
-    fn node<'a>(&'a mut self) -> LogNode<'a, W> {
+    pub fn new(writer: W) -> Self {
+        Self { writer }
+    }
+
+    pub fn node<'a>(&'a mut self) -> LogNode<'a, W> {
         LogNode {
             parent: PhantomData,
             path: LogPath::Here("".into()),
@@ -50,11 +54,15 @@ pub struct LogNode<'n, W: SharedWrite> {
 }
 
 impl<'n, W: SharedWrite> LogNode<'n, W> {
-    pub fn put(&mut self, entry: &str) {
-        unimplemented!();
+    pub fn put(&mut self, entry: fmt::Arguments) {
+        for _ in 0..self.indent {
+            self.root.writer.write_char(' ').unwrap();
+        }
+        self.root.writer.write_fmt(entry).unwrap();
+        self.root.writer.write_char('\n').unwrap();
     }
 
-    pub fn child<'a>(&'a mut self, entry: &str) -> LogNode<'a, W> {
+    pub fn child<'a>(&'a mut self, entry: fmt::Arguments) -> LogNode<'a, W> {
         self.put(entry);
         LogNode {
             parent: PhantomData,
@@ -64,7 +72,7 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
         }
     }
 
-    pub fn named_child(&self, name: String, entry: &str)
+    pub fn named_child(&self, name: String)
     -> Result<LogNode<'n, W>, NamedLogNodeError> {
         if !(
             name.starts_with(&*self.path)

@@ -45,7 +45,7 @@ pub enum NamedLogNodeError {
 pub struct LogNode<'n, W: SharedWrite> {
     parent: PhantomData<&'n mut ()>,
     path: LogPath<'n>,
-    root: *const LogRoot<W>,
+    root: &'n LogRoot<W>,
     indent: usize,
 }
 

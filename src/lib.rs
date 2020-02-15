@@ -58,8 +58,16 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
         for _ in 0..self.indent {
             self.root.writer.write_char(' ').unwrap();
         }
+        self.put_path();
         self.root.writer.write_fmt(entry).unwrap();
         self.root.writer.write_char('\n').unwrap();
+    }
+
+    fn put_path(&mut self) {
+        let s = &*self.path;
+        self.root.writer.write_char(0 as char).unwrap();
+        self.root.writer.write_str(s).unwrap();
+        self.root.writer.write_char(0 as char).unwrap();
     }
 
     pub fn child<'a>(&'a mut self, entry: fmt::Arguments) -> LogNode<'a, W> {

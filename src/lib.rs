@@ -72,7 +72,7 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
         }
     }
 
-    pub fn named_child(&mut self, name: String, entry: fmt::Arguments)
+    pub fn named_child(&mut self, name: LogPathString, entry: fmt::Arguments)
     -> Result<LogNode<'n, W>, NamedLogNodeError> {
         self.put(entry);
         if !(
@@ -90,11 +90,13 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
     }
 }
 
+// TODO: Depending on 'alloc' feature, this is either String or
+// &'static str. (I think.)
+type LogPathString = String;
+
 #[derive(Debug)]
 pub enum LogPath<'p> {
-    // TODO: Depending on 'alloc' feature, this contains either String or
-    // &'static str. (I think.)
-    Here(String),
+    Here(LogPathString),
     NotHere(&'p str),
 }
 

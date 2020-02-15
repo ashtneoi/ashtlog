@@ -72,8 +72,9 @@ impl<'n, W: SharedWrite> LogNode<'n, W> {
         }
     }
 
-    pub fn named_child(&self, name: String)
+    pub fn named_child(&mut self, name: String, entry: fmt::Arguments)
     -> Result<LogNode<'n, W>, NamedLogNodeError> {
+        self.put(entry);
         if !(
             name.starts_with(&*self.path)
             && name[self.path.len()..].starts_with("/")

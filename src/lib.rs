@@ -41,8 +41,7 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
         self.receiver.receive(entry, self);
     }
 
-    // XXX: 'a
-    pub fn child(&'n mut self, entry: fmt::Arguments) -> LogNode<'n, R> {
+    pub fn child<'a>(&'a mut self, entry: fmt::Arguments) -> Self {
         self.put(entry);
         LogNode {
             receiver: self.receiver,
@@ -51,7 +50,7 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
         }
     }
 
-    pub fn child_shared(&'n self, name: LogNodeName) -> LogNode<'n, R> {
+    pub fn child_shared<'a>(&'a self, name: LogNodeName) -> Self {
         LogNode {
             receiver: self.receiver,
             parent: Parent::Shared(self),

@@ -4,117 +4,79 @@ extern crate alloc;
 
 use alloc::string::String;
 use core::fmt;
-use core::marker::PhantomData;
-use core::ops::Deref;
 
-pub unsafe trait SharedWrite {
-    fn write_str(&self, s: &str) -> fmt::Result;
-    fn write_char(&self, c: char) -> fmt::Result;
-    fn write_fmt(&self, args: fmt::Arguments) -> fmt::Result;
-}
-
-// TODO: Impl SharedWrite for things in std.
-
-// TODO: Blanket-impl SharedWrite for Mutex<W: Write>, if that actually makes
-// sense.
-
-#[derive(Debug)]
-pub struct LogRoot<W: SharedWrite> {
-    writer: W,
-}
-
-impl<W: SharedWrite> LogRoot<W> {
-    pub fn new(writer: W) -> Self {
-        Self { writer }
-    }
-
-    pub fn node<'a>(&'a mut self) -> LogNode<'a, W> {
-        LogNode {
-            parent: PhantomData,
-            path: LogPath::Here("".into()),
-            root: self,
-            indent: 0,
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum NamedLogNodeError {
-    DifferentPrefix(String),
-}
-
-// TODO: Show that `root` being a raw pointer is sound. Or maybe find a safe
-// alternative.
-#[derive(Debug)]
-pub struct LogNode<'n, W: SharedWrite> {
-    parent: PhantomData<&'n mut ()>,
-    path: LogPath<'n>,
-    root: &'n LogRoot<W>,
-    indent: usize,
-}
-
-impl<'n, W: SharedWrite> LogNode<'n, W> {
-    pub fn put(&mut self, entry: fmt::Arguments) {
-        for _ in 0..self.indent {
-            self.root.writer.write_char(' ').unwrap();
-        }
-        self.put_path();
-        self.root.writer.write_fmt(entry).unwrap();
-        self.root.writer.write_char('\n').unwrap();
-    }
-
-    fn put_path(&mut self) {
-        let s = &*self.path;
-        self.root.writer.write_char(0 as char).unwrap();
-        self.root.writer.write_str(s).unwrap();
-        self.root.writer.write_char(0 as char).unwrap();
-    }
-
-    pub fn child<'a>(&'a mut self, entry: fmt::Arguments) -> LogNode<'a, W> {
-        self.put(entry);
-        LogNode {
-            parent: PhantomData,
-            path: LogPath::NotHere(&*self.path),
-            root: self.root,
-            indent: self.indent + 1,
-        }
-    }
-
-    pub fn named_child(&mut self, name: LogPathString, entry: fmt::Arguments)
-    -> Result<LogNode<'n, W>, NamedLogNodeError> {
-        self.put(entry);
-        if !(
-            name.starts_with(&*self.path)
-            && name[self.path.len()..].starts_with("/")
-        ) {
-            return Err(NamedLogNodeError::DifferentPrefix(name));
-        }
-        Ok(LogNode {
-            parent: PhantomData,
-            path: LogPath::Here(name),
-            root: self.root,
-            indent: self.indent + 1,
-        })
-    }
+// TODO: Better name?
+pub trait LogReceiver: Sync + Sized {
+    fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>);
 }
 
 // TODO: Depending on 'alloc' feature, this is either String or
 // &'static str. (I think.)
-type LogPathString = String;
+type LogNodeName = String;
 
 #[derive(Debug)]
-pub enum LogPath<'p> {
-    Here(LogPathString),
-    NotHere(&'p str),
+enum Parent<'n, R: LogReceiver> {
+    Mut(&'n mut LogNode<'n, R>),
+    Shared(&'n LogNode<'n, R>),
+    None,
 }
 
-impl<'p> Deref for LogPath<'p> {
-    type Target = str;
+#[derive(Debug)]
+pub struct LogNode<'n, R: LogReceiver> {
+    receiver: &'n R,
+    parent: Parent<'n, R>,
+    name: Option<LogNodeName>,
+}
 
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Here(ref s) => s,
-            Self::NotHere(s) => s,
+impl<'n, R: LogReceiver> LogNode<'n, R> {
+    pub fn new(receiver: &'n R) -> Self {
+        Self {
+            receiver,
+            parent: Parent::None,
+            name: None,
         }
+    }
+
+    pub fn put(&mut self, entry: fmt::Arguments) {
+        self.receiver.receive(entry, self);
+    }
+
+    // XXX: 'a
+    pub fn child(&'n mut self, entry: fmt::Arguments) -> LogNode<'n, R> {
+        self.put(entry);
+        LogNode {
+            receiver: self.receiver,
+            parent: Parent::Mut(self),
+            name: None,
+        }
+    }
+
+    pub fn child_shared(&'n self, name: LogNodeName) -> LogNode<'n, R> {
+        LogNode {
+            receiver: self.receiver,
+            parent: Parent::Shared(self),
+            name: Some(name),
+        }
+    }
+}
+
+mod tests {
+    use alloc::string::ToString;
+    use crate::{LogNode, LogReceiver};
+    use core::fmt;
+
+    impl LogReceiver for () {
+        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
+        }
+    }
+
+    #[test]
+    fn test_lifetimes() {
+        let r = ();
+        let mut n = LogNode::new(&r);
+        {
+            n.child_shared("hi".to_string());
+        }
+        n.put(format_args!("hi"));
     }
 }

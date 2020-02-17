@@ -1,9 +1,5 @@
-#![no_std]
-
-extern crate alloc;
-
-use alloc::string::String;
 use core::fmt;
+use core::marker::PhantomData;
 
 // TODO: Better name?
 pub trait LogReceiver: Sync + Sized {
@@ -12,70 +8,86 @@ pub trait LogReceiver: Sync + Sized {
 
 // TODO: Depending on 'alloc' feature, this is either String or
 // &'static str. (I think.)
-type LogNodeName = String;
+type LogNodeName = &'static str;
 
+// TODO: Try just a type alias of PhantomData<&'n ()>.
 #[derive(Debug)]
-enum Parent<'n, R: LogReceiver> {
-    Mut(&'n mut LogNode<'n, R>),
-    Shared(&'n LogNode<'n, R>),
+enum ParentLifetime<'n> {
+    Mut(PhantomData<&'n mut ()>),
+    Shared(PhantomData<&'n ()>),
     None,
 }
 
 #[derive(Debug)]
-pub struct LogNode<'n, R: LogReceiver> {
+pub struct LogNode<'n, R> {
     receiver: &'n R,
-    parent: Parent<'n, R>,
+    parent_lifetime: ParentLifetime<'n>,
+    parent: Option<&'n LogNode<'n, R>>,
     name: Option<LogNodeName>,
 }
 
-impl<'n, R: LogReceiver> LogNode<'n, R> {
+impl<'n, R> LogNode<'n, R> {
     pub fn new(receiver: &'n R) -> Self {
         Self {
             receiver,
-            parent: Parent::None,
+            parent_lifetime: ParentLifetime::None,
+            parent: None,
             name: None,
         }
     }
+}
 
+impl<'n, R: LogReceiver> LogNode<'n, R> {
     pub fn put(&mut self, entry: fmt::Arguments) {
         self.receiver.receive(entry, self);
     }
 
-    pub fn child<'a>(&'a mut self, entry: fmt::Arguments) -> Self {
+    pub fn child<'a>(self: &'a mut LogNode<'n, R>, entry: fmt::Arguments)
+    -> LogNode<'a, R> {
         self.put(entry);
         LogNode {
             receiver: self.receiver,
-            parent: Parent::Mut(self),
+            parent_lifetime: ParentLifetime::Mut(PhantomData),
+            parent: Some(&*self),
             name: None,
         }
     }
 
-    pub fn child_shared<'a>(&'a self, name: LogNodeName) -> Self {
+    pub fn child_shared<'a>(self: &'a LogNode<'n, R>, name: LogNodeName)
+    -> LogNode<'a, R> {
         LogNode {
             receiver: self.receiver,
-            parent: Parent::Shared(self),
+            parent_lifetime: ParentLifetime::Shared(PhantomData),
+            parent: Some(&*self),
             name: Some(name),
         }
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use alloc::string::ToString;
-    use crate::{LogNode, LogReceiver};
     use core::fmt;
+    use crate::{LogNode, LogReceiver};
 
-    impl LogReceiver for () {
-        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
+    struct SimplePrintlnLogDumper;
+
+    impl LogReceiver for SimplePrintlnLogDumper {
+        fn receive<'n>(&self, entry: fmt::Arguments, _node: &LogNode<Self>) {
+            let mut s = String::new();
+            fmt::write(&mut s, entry).unwrap();
+            println!("{}", s);
         }
     }
 
     #[test]
     fn test_lifetimes() {
-        let r = ();
-        let mut n = LogNode::new(&r);
+        let r = SimplePrintlnLogDumper;
+        let mut p = LogNode::new(&r);
+        p.put(format_args!("outer 1"));
         {
-            n.child_shared("hi".to_string());
+            let mut c = p.child_shared("hi");
+            c.put(format_args!("inner"));
         }
-        n.put(format_args!("hi"));
+        p.put(format_args!("outer 2"));
     }
 }

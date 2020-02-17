@@ -10,18 +10,10 @@ pub trait LogReceiver: Sync + Sized {
 // &'static str. (I think.)
 type LogNodeName = &'static str;
 
-// TODO: Try just a type alias of PhantomData<&'n ()>.
-#[derive(Debug)]
-enum ParentLifetime<'n> {
-    Mut(PhantomData<&'n mut ()>),
-    Shared(PhantomData<&'n ()>),
-    None,
-}
-
 #[derive(Debug)]
 pub struct LogNode<'n, R> {
     receiver: &'n R,
-    parent_lifetime: ParentLifetime<'n>,
+    parent_lifetime: PhantomData<&'n ()>,
     parent: Option<&'n LogNode<'n, R>>,
     name: Option<LogNodeName>,
 }
@@ -30,7 +22,7 @@ impl<'n, R> LogNode<'n, R> {
     pub fn new(receiver: &'n R) -> Self {
         Self {
             receiver,
-            parent_lifetime: ParentLifetime::None,
+            parent_lifetime: PhantomData,
             parent: None,
             name: None,
         }
@@ -47,7 +39,7 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
         self.put(entry);
         LogNode {
             receiver: self.receiver,
-            parent_lifetime: ParentLifetime::Mut(PhantomData),
+            parent_lifetime: PhantomData,
             parent: Some(&*self),
             name: None,
         }
@@ -57,7 +49,7 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
     -> LogNode<'a, R> {
         LogNode {
             receiver: self.receiver,
-            parent_lifetime: ParentLifetime::Shared(PhantomData),
+            parent_lifetime: PhantomData,
             parent: Some(&*self),
             name: Some(name),
         }
@@ -85,7 +77,7 @@ mod tests {
         let mut p = LogNode::new(&r);
         p.put(format_args!("outer 1"));
         {
-            let mut c = p.child_shared("hi");
+            let mut c = p.child(format_args!("child"));
             c.put(format_args!("inner"));
         }
         p.put(format_args!("outer 2"));

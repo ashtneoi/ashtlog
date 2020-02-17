@@ -1,3 +1,5 @@
+#![no_std]
+
 use core::fmt;
 
 // TODO: Better name?
@@ -5,15 +7,11 @@ pub trait LogReceiver: Sync + Sized {
     fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>);
 }
 
-// TODO: Depending on 'alloc' feature, this is either String or
-// &'static str. (I think.)
-type LogNodeName = &'static str;
-
 #[derive(Debug)]
 pub struct LogNode<'n, R> {
     receiver: &'n R,
     parent: Option<&'n LogNode<'n, R>>,
-    name: Option<LogNodeName>,
+    name: Option<&'n str>,
 }
 
 impl<'n, R> LogNode<'n, R> {
@@ -41,7 +39,7 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
         }
     }
 
-    pub fn child_shared<'a>(self: &'a LogNode<'n, R>, name: LogNodeName)
+    pub fn child_shared<'a>(self: &'a LogNode<'n, R>, name: &'a str)
     -> LogNode<'a, R> {
         LogNode {
             receiver: self.receiver,
@@ -56,19 +54,15 @@ mod tests {
     use core::fmt;
     use crate::{LogNode, LogReceiver};
 
-    struct SimplePrintlnLogDumper;
+    struct NullLogReceiver;
 
-    impl LogReceiver for SimplePrintlnLogDumper {
-        fn receive<'n>(&self, entry: fmt::Arguments, _node: &LogNode<Self>) {
-            let mut s = String::new();
-            fmt::write(&mut s, entry).unwrap();
-            println!("{}", s);
-        }
+    impl LogReceiver for NullLogReceiver {
+        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) { }
     }
 
     #[test]
     fn test_lifetimes() {
-        let r = SimplePrintlnLogDumper;
+        let r = NullLogReceiver;
         let mut p = LogNode::new(&r);
         p.put(format_args!("outer 1"));
         {

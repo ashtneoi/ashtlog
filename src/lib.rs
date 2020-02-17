@@ -72,6 +72,12 @@ mod tests {
         let mut p = LogNode::new(&r);
         p.put(format_args!("outer 1"));
         {
+            let mut c = p.child_shared("1");
+            let mut d = p.child_shared("2");
+            c.put(format_args!("inner"));
+            d.put(format_args!("inner"));
+        }
+        {
             let mut c = p.child(format_args!("child"));
             c.put(format_args!("inner"));
         }

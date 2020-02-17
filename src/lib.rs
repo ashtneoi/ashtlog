@@ -1,5 +1,4 @@
 use core::fmt;
-use core::marker::PhantomData;
 
 // TODO: Better name?
 pub trait LogReceiver: Sync + Sized {
@@ -13,7 +12,6 @@ type LogNodeName = &'static str;
 #[derive(Debug)]
 pub struct LogNode<'n, R> {
     receiver: &'n R,
-    parent_lifetime: PhantomData<&'n ()>,
     parent: Option<&'n LogNode<'n, R>>,
     name: Option<LogNodeName>,
 }
@@ -22,7 +20,6 @@ impl<'n, R> LogNode<'n, R> {
     pub fn new(receiver: &'n R) -> Self {
         Self {
             receiver,
-            parent_lifetime: PhantomData,
             parent: None,
             name: None,
         }
@@ -39,7 +36,6 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
         self.put(entry);
         LogNode {
             receiver: self.receiver,
-            parent_lifetime: PhantomData,
             parent: Some(&*self),
             name: None,
         }
@@ -49,7 +45,6 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
     -> LogNode<'a, R> {
         LogNode {
             receiver: self.receiver,
-            parent_lifetime: PhantomData,
             parent: Some(&*self),
             name: Some(name),
         }

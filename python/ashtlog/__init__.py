@@ -54,18 +54,20 @@ class Standard(LogReceiver):
             nodes.append(n)
             n = n.parent
 
-        self.target.write('  ' * indentation)
-        self.target.write('[')
+        s = []
+        s.append('  ' * indentation)
+        s.append('[')
         for n in reversed(nodes):  # root to leaf
             if n.parent and n.parent.name and n.name:
-                self.target.write('/')
+                s.append('/')
             if n.name:
-                self.target.write(n.name)  # FIXME: Escape '/' and '>'.
+                s.append(n.name)  # FIXME: Escape '/' and '>'.
             else:
-                self.target.write('>')
-        self.target.write('] ')
-        self.target.write(entry)
-        self.target.write('\n')
+                s.append('>')
+        s.append('] ')
+        s.append(entry)
+        s.append('\n')
+        self.target.write("".join(s))
 
 
 if __name__ == '__main__':

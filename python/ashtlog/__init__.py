@@ -61,7 +61,10 @@ class Standard(LogReceiver):
             if n.parent and n.parent.name and n.name:
                 s.append('/')
             if n.name:
-                s.append(n.name)  # FIXME: Escape '/' and '>'.
+                for c in n.name:
+                    if c in '/>]\\':
+                        s.append('\\')
+                    s.append(c)
             else:
                 s.append('>')
         s.append('] ')
@@ -82,7 +85,7 @@ if __name__ == '__main__':
     out = log.child_shared('stdout')
     err = log.child_shared('stderr')
     out.put("everything is fine")
-    out_more = out.child_shared("doing-stuff")
+    out_more = out.child_shared("doing>\\/stuff")
     out_more.put("okay doing stuff")
     err.put("oh no")
     out.put("it's fine")

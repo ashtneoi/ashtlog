@@ -1,9 +1,9 @@
-#![no_std]
-
-use core::fmt;
+use std::fmt;
+use std::io;
+use std::io::Write as io_Write;
 
 // TODO: Better name?
-pub trait LogReceiver: Sync + Sized {
+pub trait LogReceiver: Sized {
     fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>);
 }
 
@@ -46,6 +46,50 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
             parent: Some(&*self),
             name: Some(name),
         }
+    }
+}
+
+// TODO: Figure out a way to make this no_std.
+// TODO: Add iterative alternative using Vec or something.
+pub struct HumanReadableLogReceiver;
+
+impl HumanReadableLogReceiver {
+    // FIXME: No unwrap.
+    fn print_prefix(&self, node: &LogNode<Self>) {
+        let mut stdout_unlocked = io::stdout();
+        let mut stdout = stdout_unlocked.lock();
+        if let Some(p) = node.parent {
+            self.print_prefix(p);
+        }
+        match node.name {
+            Some(s) => {
+                if node.parent.and_then(|p| p.name).is_some() {
+                    stdout.write_all(b"/").unwrap();
+                }
+                let mut char_buf = [0; 4];
+                for c in s.chars() {
+                    if c == '\\' || c == '/' || c == '>' {
+                        stdout.write_all(b"\\").unwrap();
+                    }
+                    stdout.write_all(
+                        c.encode_utf8(&mut char_buf).as_bytes()
+                    ).unwrap();
+                }
+            },
+            None => stdout.write_all(b">").unwrap(),
+        }
+    }
+}
+
+impl LogReceiver for HumanReadableLogReceiver {
+    // FIXME: No unwrap.
+    fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>) {
+        self.print_prefix(node);
+
+        let mut stdout_unlocked = io::stdout();
+        let mut stdout = stdout_unlocked.lock();
+        stdout.write_all(b"\0").unwrap();
+        stdout.write_fmt(entry).unwrap();
     }
 }
 

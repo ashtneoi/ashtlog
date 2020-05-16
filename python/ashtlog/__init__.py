@@ -47,7 +47,7 @@ class PlainLogReceiver(LogReceiver):
             here = here.parent
         segments.reverse()
         for i in range(1, len(segments)):
-            if segments[i - 1] != ">":
+            if segments[i - 1] != ">" and segments[i] != ">":
                 segments[i] = "/" + segments[i]
 
         return "".join(segments), len(segments)

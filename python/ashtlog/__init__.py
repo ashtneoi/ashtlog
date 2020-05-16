@@ -54,7 +54,7 @@ class PlainLogReceiver(LogReceiver):
 
     def put(self, entry):
         path, indent = self._get_path()
-        print("  " * indent + path + " " + entry)
+        print(f"{'  ' * indent}[{path}] {entry}")
 
     def child(self, entry):
         self.put(entry)

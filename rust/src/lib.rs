@@ -8,10 +8,16 @@ pub trait LogReceiver: Sized {
 }
 
 #[derive(Debug)]
+enum NameOrPath<'n> {
+    Name(&'n str),
+    Path(String),
+}
+
+#[derive(Debug)]
 pub struct LogNode<'n, R> {
     receiver: &'n R,
     parent: Option<&'n LogNode<'n, R>>,
-    name: Option<&'n str>,
+    name_or_path: Option<NameOrPath<'n>>,
 }
 
 impl<'n, R> LogNode<'n, R> {
@@ -19,7 +25,7 @@ impl<'n, R> LogNode<'n, R> {
         Self {
             receiver,
             parent: None,
-            name: None,
+            name_or_path: None,
         }
     }
 }
@@ -35,7 +41,7 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
         LogNode {
             receiver: self.receiver,
             parent: Some(&*self),
-            name: None,
+            name_or_path: None,
         }
     }
 
@@ -44,7 +50,7 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
         LogNode {
             receiver: self.receiver,
             parent: Some(&*self),
-            name: Some(name),
+            name_or_path: Some(NameOrPath::Name(name)),
         }
     }
 }
@@ -61,9 +67,9 @@ impl PlainLogReceiver {
         if let Some(p) = node.parent {
             self.print_prefix(p);
         }
-        match node.name {
-            Some(s) => {
-                if node.parent.and_then(|p| p.name).is_some() {
+        match node.name_or_path {
+            Some(NameOrPath::Name(s)) => {
+                if node.parent.map(|p| p.name_or_path.is_some()) == Some(true) {
                     stdout.write_all(b"/").unwrap();
                 }
                 let mut char_buf = [0; 4];
@@ -77,6 +83,7 @@ impl PlainLogReceiver {
                 }
             },
             None => stdout.write_all(b">").unwrap(),
+            _ => unimplemented!(),
         }
     }
 }

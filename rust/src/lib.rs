@@ -51,12 +51,12 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
 
 // TODO: Figure out a way to make this no_std.
 // TODO: Add iterative alternative using Vec or something.
-pub struct HumanReadableLogReceiver;
+pub struct PlainLogReceiver;
 
-impl HumanReadableLogReceiver {
+impl PlainLogReceiver {
     // FIXME: No unwrap.
     fn print_prefix(&self, node: &LogNode<Self>) {
-        let mut stdout_unlocked = io::stdout();
+        let stdout_unlocked = io::stdout();
         let mut stdout = stdout_unlocked.lock();
         if let Some(p) = node.parent {
             self.print_prefix(p);
@@ -81,15 +81,24 @@ impl HumanReadableLogReceiver {
     }
 }
 
-impl LogReceiver for HumanReadableLogReceiver {
+impl LogReceiver for PlainLogReceiver {
     // FIXME: No unwrap.
     fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>) {
+        {
+            let stdout_unlocked = io::stdout();
+            let mut stdout = stdout_unlocked.lock();
+            stdout.write_all(b"[").unwrap();
+        }
+
         self.print_prefix(node);
 
-        let mut stdout_unlocked = io::stdout();
-        let mut stdout = stdout_unlocked.lock();
-        stdout.write_all(b"\0").unwrap();
-        stdout.write_fmt(entry).unwrap();
+        {
+            let stdout_unlocked = io::stdout();
+            let mut stdout = stdout_unlocked.lock();
+            stdout.write_all(b"] ").unwrap();
+            stdout.write_fmt(entry).unwrap();
+            stdout.write_all(b"\n").unwrap();
+        }
     }
 }
 

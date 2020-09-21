@@ -1,4 +1,4 @@
-use std::fmt;
+use core::fmt;
 use std::io;
 use std::io::Write as io_Write;
 
@@ -117,7 +117,9 @@ mod tests {
     struct NullLogReceiver;
 
     impl LogReceiver for NullLogReceiver {
-        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) { }
+        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
+            // nothing
+        }
     }
 
     #[test]

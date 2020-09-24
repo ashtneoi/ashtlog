@@ -88,6 +88,10 @@ impl LogReceiver for PlainLogReceiver {
         let stdout_unlocked = io::stdout();
         let mut stdout = stdout_unlocked.lock();
 
+        for _ in 0..v.len() {
+            stdout.write_all(b"  ").unwrap();
+        }
+
         stdout.write_all(b"[").unwrap();
 
         let mut prev_was_some = false;

@@ -10,7 +10,7 @@ pub trait LogReceiver: Sized {
 #[derive(Debug)]
 enum NameOrPath<'n> {
     Name(&'n str),
-    Path(String),
+    _Path(String), // TODO
 }
 
 #[derive(Debug)]

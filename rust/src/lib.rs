@@ -60,8 +60,8 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
 pub struct PlainLogReceiver;
 
 impl PlainLogReceiver {
-    // FIXME: No unwrap.
-    fn print_prefix(&self, node: &LogNode<Self>) {
+    // TODO: Do we need this?
+    fn _print_prefix_recursive(&self, node: &LogNode<Self>) {
         let stdout_unlocked = io::stdout();
         let mut stdout = stdout_unlocked.lock();
         if let Some(p) = node.parent {
@@ -84,6 +84,52 @@ impl PlainLogReceiver {
             },
             None => stdout.write_all(b">").unwrap(),
             _ => unimplemented!(),
+        }
+    }
+
+    fn print_prefix(&self, mut node: &LogNode<Self>) {
+        let mut v = Vec::new();
+
+        loop {
+            match node.name_or_path {
+                Some(NameOrPath::Name(s)) => {
+                    let mut segment = String::new();
+                    for c in s.chars() {
+                        if c == '\\' || c == '/' || c == '>' {
+                            segment.push('\\');
+                        }
+                        segment.push(c);
+                    }
+                    v.push(Some(segment));
+                },
+                None => v.push(None),
+                _ => unimplemented!(),
+            }
+
+            match node.parent {
+                Some(p) => { node = p; },
+                None => break,
+            }
+        }
+
+        let stdout_unlocked = io::stdout();
+        let mut stdout = stdout_unlocked.lock();
+
+        let mut prev_was_some = false;
+        for segment in (&v).into_iter().rev() {
+            match segment {
+                Some(segment) => {
+                    if prev_was_some {
+                        stdout.write_all(b"/").unwrap();
+                    }
+                    stdout.write_all(segment.as_bytes()).unwrap();
+                    prev_was_some = true;
+                },
+                None => {
+                    stdout.write_all(b">").unwrap();
+                    prev_was_some = false;
+                },
+            }
         }
     }
 }

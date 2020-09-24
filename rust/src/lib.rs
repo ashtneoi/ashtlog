@@ -56,7 +56,6 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
 }
 
 // TODO: Figure out a way to make this no_std.
-// TODO: Add iterative alternative using Vec or something.
 pub struct PlainLogReceiver;
 
 impl LogReceiver for PlainLogReceiver {

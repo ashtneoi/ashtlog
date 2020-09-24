@@ -59,35 +59,8 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
 // TODO: Add iterative alternative using Vec or something.
 pub struct PlainLogReceiver;
 
-impl PlainLogReceiver {
-    // TODO: Do we need this?
-    fn _print_prefix_recursive(&self, node: &LogNode<Self>) {
-        let stdout_unlocked = io::stdout();
-        let mut stdout = stdout_unlocked.lock();
-        if let Some(p) = node.parent {
-            self.print_prefix(p);
-        }
-        match node.name_or_path {
-            Some(NameOrPath::Name(s)) => {
-                if node.parent.map(|p| p.name_or_path.is_some()) == Some(true) {
-                    stdout.write_all(b"/").unwrap();
-                }
-                let mut char_buf = [0; 4];
-                for c in s.chars() {
-                    if c == '\\' || c == '/' || c == '>' {
-                        stdout.write_all(b"\\").unwrap();
-                    }
-                    stdout.write_all(
-                        c.encode_utf8(&mut char_buf).as_bytes()
-                    ).unwrap();
-                }
-            },
-            None => stdout.write_all(b">").unwrap(),
-            _ => unimplemented!(),
-        }
-    }
-
-    fn print_prefix(&self, mut node: &LogNode<Self>) {
+impl LogReceiver for PlainLogReceiver {
+    fn receive(&self, entry: fmt::Arguments, mut node: &LogNode<Self>) {
         let mut v = Vec::new();
 
         loop {
@@ -115,6 +88,8 @@ impl PlainLogReceiver {
         let stdout_unlocked = io::stdout();
         let mut stdout = stdout_unlocked.lock();
 
+        stdout.write_all(b"[").unwrap();
+
         let mut prev_was_some = false;
         for segment in (&v).into_iter().rev() {
             match segment {
@@ -131,27 +106,10 @@ impl PlainLogReceiver {
                 },
             }
         }
-    }
-}
 
-impl LogReceiver for PlainLogReceiver {
-    // FIXME: No unwrap.
-    fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>) {
-        {
-            let stdout_unlocked = io::stdout();
-            let mut stdout = stdout_unlocked.lock();
-            stdout.write_all(b"[").unwrap();
-        }
-
-        self.print_prefix(node);
-
-        {
-            let stdout_unlocked = io::stdout();
-            let mut stdout = stdout_unlocked.lock();
-            stdout.write_all(b"] ").unwrap();
-            stdout.write_fmt(entry).unwrap();
-            stdout.write_all(b"\n").unwrap();
-        }
+        stdout.write_all(b"] ").unwrap();
+        stdout.write_fmt(entry).unwrap();
+        stdout.write_all(b"\n").unwrap();
     }
 }
 

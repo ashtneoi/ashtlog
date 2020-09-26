@@ -1,4 +1,6 @@
 use ashtlog::{
+    log,
+    log_child,
     PlainLogBackend,
     LogNode,
 };
@@ -7,22 +9,22 @@ fn main() {
     let r = PlainLogBackend;
     let mut a = LogNode::new(&r);
 
-    let mut b = a.child(format_args!("b"));
-    b.put(format_args!("1"));
+    let mut b = log_child!(a, "b");
+    log!(b, "1");
     let mut c = b.child_shared("c");
-    c.put(format_args!("2"));
+    log!(c, "2");
     let mut d = b.child_shared("d");
-    d.put(format_args!("3"));
-    let mut e = a.child(format_args!("e"));
-    e.put(format_args!("4"));
+    log!(d, "3");
+    let mut e = log_child!(a, "e");
+    log!(e, "4");
     let mut f = e.child_shared("f");
-    f.put(format_args!("5"));
-    a.put(format_args!("6"));
+    log!(f, "5");
+    log!(a, "6");
 
-    let g = a.child(format_args!("g"));
+    let g = log_child!(a, "g");
     let h = g.child_shared("h");
     let mut i = h.child_shared("i");
-    let mut j = i.child(format_args!("j"));
-    let mut k = j.child(format_args!("k"));
-    k.put(format_args!("7"));
+    let mut j = log_child!(i, "j");
+    let mut k = log_child!(j, "k");
+    log!(k, "7");
 }

@@ -2,6 +2,49 @@ use core::fmt;
 use std::io;
 use std::io::Write as io_Write;
 
+#[cfg(test)]
+mod tests {
+    use core::fmt;
+    use crate::{log, log_child, LogNode, LogBackend};
+
+    struct NullLogBackend;
+
+    impl LogBackend for NullLogBackend {
+        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
+            // nothing
+        }
+    }
+
+    #[test]
+    fn test_macros() {
+        let b = NullLogBackend;
+        let mut log = LogNode::new(&b);
+        log!(log, "hi");
+        {
+            let mut log = log_child!(log, "child!");
+            log!((log), "{}", ("bye"));
+        }
+    }
+
+    #[test]
+    fn test_lifetimes() {
+        let b = NullLogBackend;
+        let mut p = LogNode::new(&b);
+        p.put(format_args!("outer 1"));
+        {
+            let mut c = p.child_shared("1");
+            let mut d = p.child_shared("2");
+            c.put(format_args!("inner"));
+            d.put(format_args!("inner"));
+        }
+        {
+            let mut c = p.child(format_args!("child"));
+            c.put(format_args!("inner"));
+        }
+        p.put(format_args!("outer 2"));
+    }
+}
+
 pub trait LogBackend: Sized {
     fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>);
 }
@@ -115,34 +158,16 @@ impl LogBackend for PlainLogBackend {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use core::fmt;
-    use crate::{LogNode, LogBackend};
+#[macro_export]
+macro_rules! log {
+    ($logger:expr, $format:tt $(, $args:tt)* $(,)?) => (
+        $logger.put(format_args!($format $(, $args)*))
+    );
+}
 
-    struct NullLogBackend;
-
-    impl LogBackend for NullLogBackend {
-        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
-            // nothing
-        }
-    }
-
-    #[test]
-    fn test_lifetimes() {
-        let r = NullLogBackend;
-        let mut p = LogNode::new(&r);
-        p.put(format_args!("outer 1"));
-        {
-            let mut c = p.child_shared("1");
-            let mut d = p.child_shared("2");
-            c.put(format_args!("inner"));
-            d.put(format_args!("inner"));
-        }
-        {
-            let mut c = p.child(format_args!("child"));
-            c.put(format_args!("inner"));
-        }
-        p.put(format_args!("outer 2"));
-    }
+#[macro_export]
+macro_rules! log_child {
+    ($logger:expr, $format:tt $(, $args:tt)* $(,)?) => (
+        $logger.child(format_args!($format $(, $args)*))
+    );
 }

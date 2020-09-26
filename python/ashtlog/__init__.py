@@ -8,7 +8,7 @@ def escape(x, escaped, escape_char):
     return "".join(xx)
 
 
-class LogReceiver:
+class LogBackend:
     def put(self, entry):
         pass
 
@@ -19,7 +19,7 @@ class LogReceiver:
         pass
 
 
-class NullLogReceiver(LogReceiver):
+class NullLogBackend(LogBackend):
     def put(self, entry):
         pass
 
@@ -30,7 +30,7 @@ class NullLogReceiver(LogReceiver):
         pass
 
 
-class PlainLogReceiver(LogReceiver):
+class PlainLogBackend(LogBackend):
     def __init__(self, parent=None, name=None):
         self.parent = parent
         self.name = name

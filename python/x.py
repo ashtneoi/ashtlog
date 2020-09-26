@@ -1,8 +1,8 @@
-from ashtlog import PlainLogReceiver
+from ashtlog import PlainLogBackend
 
 
 def main():
-    a = PlainLogReceiver()
+    a = PlainLogBackend()
     b = a.child("b")
     b.put("1")
     c = b.child_shared("c")

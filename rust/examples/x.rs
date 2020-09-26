@@ -1,10 +1,10 @@
 use ashtlog::{
-    PlainLogReceiver,
+    PlainLogBackend,
     LogNode,
 };
 
 fn main() {
-    let r = PlainLogReceiver;
+    let r = PlainLogBackend;
     let mut a = LogNode::new(&r);
 
     let mut b = a.child(format_args!("b"));

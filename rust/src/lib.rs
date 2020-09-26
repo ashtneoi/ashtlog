@@ -2,8 +2,7 @@ use core::fmt;
 use std::io;
 use std::io::Write as io_Write;
 
-// TODO: Better name?
-pub trait LogReceiver: Sized {
+pub trait LogBackend: Sized {
     fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>);
 }
 
@@ -30,7 +29,7 @@ impl<'n, R> LogNode<'n, R> {
     }
 }
 
-impl<'n, R: LogReceiver> LogNode<'n, R> {
+impl<'n, R: LogBackend> LogNode<'n, R> {
     pub fn put(&mut self, entry: fmt::Arguments) {
         self.receiver.receive(entry, self);
     }
@@ -56,9 +55,9 @@ impl<'n, R: LogReceiver> LogNode<'n, R> {
 }
 
 // TODO: Figure out a way to make this no_std.
-pub struct PlainLogReceiver;
+pub struct PlainLogBackend;
 
-impl LogReceiver for PlainLogReceiver {
+impl LogBackend for PlainLogBackend {
     fn receive(&self, entry: fmt::Arguments, mut node: &LogNode<Self>) {
         let mut v = Vec::new();
 
@@ -119,11 +118,11 @@ impl LogReceiver for PlainLogReceiver {
 #[cfg(test)]
 mod tests {
     use core::fmt;
-    use crate::{LogNode, LogReceiver};
+    use crate::{LogNode, LogBackend};
 
-    struct NullLogReceiver;
+    struct NullLogBackend;
 
-    impl LogReceiver for NullLogReceiver {
+    impl LogBackend for NullLogBackend {
         fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
             // nothing
         }
@@ -131,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_lifetimes() {
-        let r = NullLogReceiver;
+        let r = NullLogBackend;
         let mut p = LogNode::new(&r);
         p.put(format_args!("outer 1"));
         {

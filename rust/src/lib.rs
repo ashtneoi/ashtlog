@@ -10,7 +10,7 @@ mod tests {
     struct NullLogBackend;
 
     impl LogBackend for NullLogBackend {
-        fn receive<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
+        fn put<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
             // nothing
         }
     }
@@ -46,7 +46,7 @@ mod tests {
 }
 
 pub trait LogBackend: Sized {
-    fn receive(&self, entry: fmt::Arguments, node: &LogNode<Self>);
+    fn put(&self, entry: fmt::Arguments, node: &LogNode<Self>);
 }
 
 #[derive(Debug)]
@@ -57,15 +57,15 @@ enum NameOrPath<'n> {
 
 #[derive(Debug)]
 pub struct LogNode<'n, R> {
-    receiver: &'n R,
+    backend: &'n R,
     parent: Option<&'n LogNode<'n, R>>,
     name_or_path: Option<NameOrPath<'n>>,
 }
 
 impl<'n, R> LogNode<'n, R> {
-    pub fn new(receiver: &'n R) -> Self {
+    pub fn new(backend: &'n R) -> Self {
         Self {
-            receiver,
+            backend,
             parent: None,
             name_or_path: None,
         }
@@ -74,14 +74,14 @@ impl<'n, R> LogNode<'n, R> {
 
 impl<'n, R: LogBackend> LogNode<'n, R> {
     pub fn put(&mut self, entry: fmt::Arguments) {
-        self.receiver.receive(entry, self);
+        self.backend.put(entry, self);
     }
 
     pub fn child<'a>(self: &'a mut LogNode<'n, R>, entry: fmt::Arguments)
     -> LogNode<'a, R> {
         self.put(entry);
         LogNode {
-            receiver: self.receiver,
+            backend: self.backend,
             parent: Some(&*self),
             name_or_path: None,
         }
@@ -90,7 +90,7 @@ impl<'n, R: LogBackend> LogNode<'n, R> {
     pub fn child_shared<'a>(self: &'a LogNode<'n, R>, name: &'a str)
     -> LogNode<'a, R> {
         LogNode {
-            receiver: self.receiver,
+            backend: self.backend,
             parent: Some(&*self),
             name_or_path: Some(NameOrPath::Name(name)),
         }
@@ -101,7 +101,7 @@ impl<'n, R: LogBackend> LogNode<'n, R> {
 pub struct PlainLogBackend;
 
 impl LogBackend for PlainLogBackend {
-    fn receive(&self, entry: fmt::Arguments, mut node: &LogNode<Self>) {
+    fn put(&self, entry: fmt::Arguments, mut node: &LogNode<Self>) {
         let mut v = Vec::new();
 
         loop {

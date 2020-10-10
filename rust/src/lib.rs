@@ -15,6 +15,9 @@ mod tests {
             let mut log = log_child!(log, "child!");
             log!((log), "{}", ("bye"));
         }
+        let x = (44, 99);
+        let mut log = log_child!(log, "{}[{}]", x.1, x.1);
+        log!(log, "{} + {:04x}", x.0, x.1);
     }
 
     #[test]
@@ -156,14 +159,20 @@ impl LogBackend for PlainLogBackend {
 
 #[macro_export]
 macro_rules! log {
-    ($logger:expr, $format:tt $(, $args:tt)* $(,)?) => (
-        $logger.put(format_args!($format $(, $args)*))
+    ($logger:expr, $fmt:expr) => (
+        $logger.put(format_args!($fmt))
+    );
+    ($logger:expr, $fmt:expr, $($args:tt)*) => (
+        $logger.put(format_args!($fmt, $($args)*))
     );
 }
 
 #[macro_export]
 macro_rules! log_child {
-    ($logger:expr, $format:tt $(, $args:tt)* $(,)?) => (
-        $logger.child(format_args!($format $(, $args)*))
+    ($logger:expr, $fmt:expr) => (
+        $logger.child(format_args!($fmt))
+    );
+    ($logger:expr, $fmt:expr, $($args:tt)*) => (
+        $logger.child(format_args!($fmt, $($args)*))
     );
 }

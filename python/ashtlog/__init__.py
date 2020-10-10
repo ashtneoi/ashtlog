@@ -39,7 +39,7 @@ class PlainLogBackend(LogBackend):
     def _get_path(self):
         segments = []
         here = self
-        while here is not None:
+        while here.parent is not None:
             if here.name is None:
                 segments.append(">")
             else:

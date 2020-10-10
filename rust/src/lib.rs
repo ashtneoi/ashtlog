@@ -104,7 +104,7 @@ impl LogBackend for PlainLogBackend {
     fn put(&self, entry: fmt::Arguments, mut node: &LogNode<Self>) {
         let mut v = Vec::new();
 
-        loop {
+        while let Some(parent) = node.parent {
             match node.name_or_path {
                 Some(NameOrPath::Name(s)) => {
                     let mut segment = String::new();
@@ -120,10 +120,7 @@ impl LogBackend for PlainLogBackend {
                 _ => unimplemented!(),
             }
 
-            match node.parent {
-                Some(p) => { node = p; },
-                None => break,
-            }
+            node = parent;
         }
 
         let stdout_unlocked = io::stdout();

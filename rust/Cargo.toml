@@ -3,8 +3,6 @@ name = "ashtlog"
 version = "0.1.0"
 authors = ["ashtneoi <ashtneoi@gmail.com>"]
 edition = "2018"
+description = "A hierarchical logging system"
+repository = "https://github.com/ashtneoi/ashtlog"
 license = "MIT"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]

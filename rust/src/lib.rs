@@ -4,16 +4,7 @@ use std::io::Write as io_Write;
 
 #[cfg(test)]
 mod tests {
-    use core::fmt;
-    use crate::{log, log_child, LogNode, LogBackend};
-
-    struct NullLogBackend;
-
-    impl LogBackend for NullLogBackend {
-        fn put<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
-            // nothing
-        }
-    }
+    use crate::{log, log_child, LogNode, NullLogBackend};
 
     #[test]
     fn test_macros() {
@@ -70,6 +61,15 @@ impl<'n, R> LogNode<'n, R> {
             name_or_path: None,
         }
     }
+
+    pub fn child_shared<'a>(self: &'a LogNode<'n, R>, name: &'a str)
+    -> LogNode<'a, R> {
+        LogNode {
+            backend: self.backend,
+            parent: Some(&*self),
+            name_or_path: Some(NameOrPath::Name(name)),
+        }
+    }
 }
 
 impl<'n, R: LogBackend> LogNode<'n, R> {
@@ -86,14 +86,13 @@ impl<'n, R: LogBackend> LogNode<'n, R> {
             name_or_path: None,
         }
     }
+}
 
-    pub fn child_shared<'a>(self: &'a LogNode<'n, R>, name: &'a str)
-    -> LogNode<'a, R> {
-        LogNode {
-            backend: self.backend,
-            parent: Some(&*self),
-            name_or_path: Some(NameOrPath::Name(name)),
-        }
+pub struct NullLogBackend;
+
+impl LogBackend for NullLogBackend {
+    fn put<'n>(&self, _entry: fmt::Arguments, _node: &LogNode<Self>) {
+        // nothing
     }
 }
 

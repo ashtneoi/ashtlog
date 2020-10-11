@@ -2,13 +2,17 @@ use core::fmt;
 use std::io;
 use std::io::Write as io_Write;
 
+pub mod prelude {
+    pub use crate::{log, log_child, LogBackend, LogNode};
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{log, log_child, LogNode, NullLogBackend};
+    use crate::prelude::*;
 
     #[test]
     fn test_macros() {
-        let b = NullLogBackend;
+        let b = crate::NullLogBackend;
         let mut log = LogNode::new(&b);
         log!(log, "hi");
         {
@@ -22,7 +26,7 @@ mod tests {
 
     #[test]
     fn test_lifetimes() {
-        let b = NullLogBackend;
+        let b = crate::NullLogBackend;
         let mut p = LogNode::new(&b);
         p.put(format_args!("outer 1"));
         {

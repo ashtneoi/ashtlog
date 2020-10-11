@@ -1,12 +1,7 @@
-use ashtlog::{
-    log,
-    log_child,
-    PlainLogBackend,
-    LogNode,
-};
+use ashtlog::prelude::*;
 
 fn main() {
-    let r = PlainLogBackend;
+    let r = ashtlog::PlainLogBackend;
     let mut a = LogNode::new(&r);
 
     let mut b = log_child!(a, "b");
